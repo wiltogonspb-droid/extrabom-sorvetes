@@ -1,0 +1,8 @@
+{
+  "appId": "br.com.extrabom.sorvetes",
+  "appName": "EXTRABOM SORVETES",
+  "webDir": "out",
+  "server": { "androidScheme": "https" },
+  "android": { "backgroundColor": "#ffffff" },
+  "ios": { "backgroundColor": "#ffffff", "contentInset": "always" }
+}
