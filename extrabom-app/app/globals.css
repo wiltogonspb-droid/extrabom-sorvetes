@@ -2,3 +2,8 @@
 input,select,textarea{outline:none}input:focus,select:focus,textarea:focus{border-color:#0B4DA2!important;box-shadow:0 0 0 3px #DBEAFE}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}} .fadeUp{animation:fadeUp .35s ease both}
 @keyframes pulseDot{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}} 
+
+/* Admin responsivo: tabelas e cards nunca cortam no celular */
+.adminMain{overflow-x:hidden}
+.adminMain table{max-width:100%}
+@media(max-width:820px){ .adminMain h2{font-size:20px} .adminMain input,.adminMain select,.adminMain textarea{max-width:100%} }
