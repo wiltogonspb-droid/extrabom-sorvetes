@@ -1,7 +1,7 @@
 'use client'
 import React,{useEffect,useMemo,useState} from 'react'
 import {DB,Pedido,Produto,Revendedor,seedDB,precoPara,money,disponivel,STATUS_LABEL,StatusPedido} from '../lib/data'
-import {supabase} from '../lib/supabase'
+import {supabase,supabaseConectado} from '../lib/supabase'
 
 const AZUL='#0B4DA2', MARINHO='#0A2F6B', ROSA='#E91E8C', VERDE='#58B531', CLARO='#EAF2FF'
 const s:any={
@@ -30,7 +30,7 @@ export default function System(){
  const [filtroStatus,setFiltroStatus]=useState('todos')
 
  const [remoteOk,setRemoteOk]=useState(false)
- useEffect(()=>{try{const d=localStorage.getItem('extrabom_db_v3'); if(d) setDb(JSON.parse(d)); const ss=localStorage.getItem('extrabom_session'); if(ss) setSession(JSON.parse(ss))}catch(e){} setLoaded(true)},[])
+ useEffect(()=>{try{const d=localStorage.getItem('extrabom_db_v3'); if(d) setDb(JSON.parse(d)); const ss=localStorage.getItem('extrabom_session'); if(ss && !supabase) setSession(JSON.parse(ss))}catch(e){} setLoaded(true)},[])
  useEffect(()=>{if(loaded) localStorage.setItem('extrabom_db_v3',JSON.stringify(db))},[db,loaded])
  // SUPABASE: carrega o estado compartilhado (banco da EXTRABOM) ao abrir
  useEffect(()=>{ if(!supabase){setRemoteOk(true);return} let vivo=true; (async()=>{ try{ const {data}=await supabase.from('app_dados').select('dados').eq('id',1).maybeSingle(); if(vivo&&data&&data.dados) setDb(data.dados) }catch(e){} if(vivo) setRemoteOk(true) })(); return ()=>{vivo=false} },[])
@@ -68,20 +68,23 @@ export default function System(){
  }
  function pedirNovamente(p:Pedido){ const c:Record<string,number>={}; p.itens.forEach(i=>{const prod=db.produtos.find(x=>x.id===i.produtoId); if(prod&&prod.ativo&&prod.disponibilidade!=='indisponivel') c[i.produtoId]=i.quantidade}); setCart(c); setView('carrinho'); setToast('Itens carregados com preços e disponibilidade atuais. Confira antes de enviar.') }
 
+ const sairSessao=()=>{ try{ supabase?.auth.signOut() }catch(e){} setSession(null); try{localStorage.removeItem('extrabom_session')}catch(e){} }
+ useEffect(()=>{ if(!supabase) return; supabase.auth.getUser().then(({data})=>{ const u:any=data?.user; if(u){ const m=u.user_metadata||{}; if(m.role==='admin') setSession({role:'admin'}); else if(m.role==='revendedor') setSession({role:'revendedor',revendedorId:m.revendedorId||'r1'}) } }) },[])
+
  // ---------- LOGIN ----------
  if(!session){
   return <div style={{minHeight:'100dvh',background:'linear-gradient(180deg,#0A2F6B 0%,#0B4DA2 55%,#EAF2FF 55.1%)',display:'flex',justifyContent:'center',padding:16}}>
    <div className="fadeUp" style={{width:'100%',maxWidth:430}}>
     <div style={{textAlign:'center',padding:'26px 10px 18px',color:'#fff'}}><div style={{background:'#fff',borderRadius:22,padding:'14px 10px',boxShadow:'0 12px 32px rgba(0,0,0,.25)'}}><img src="/logo.png" alt="EXTRABOM SORVETES" style={{width:'100%',maxHeight:130,objectFit:'contain'}}/></div><h1 style={{fontSize:21,margin:'16px 0 4px',letterSpacing:.4}}>ÁREA DO REVENDEDOR</h1><p style={{opacity:.9,fontSize:14,margin:0}}>Pedidos, preços e acompanhamento em um só lugar</p></div>
     <div style={s.card}>
-     <label style={{fontWeight:700,fontSize:13,color:MARINHO}}>Telefone ou usuário</label><input style={{...s.input,margin:'6px 0 12px'}} placeholder="Ex.: carlos" value={loginUser} onChange={e=>setLoginUser(e.target.value)}/>
+     <label style={{fontWeight:700,fontSize:13,color:MARINHO}}>{supabaseConectado?'E-mail de acesso':'Telefone ou usuário'}</label><input style={{...s.input,margin:'6px 0 12px'}} placeholder={supabaseConectado?'Ex.: voce@empresa.com.br':'Ex.: carlos'} value={loginUser} onChange={e=>setLoginUser(e.target.value)}/>
      <label style={{fontWeight:700,fontSize:13,color:MARINHO}}>Senha</label><input type="password" style={{...s.input,margin:'6px 0 6px'}} placeholder="••••••••" value={loginPass} onChange={e=>setLoginPass(e.target.value)}/>
      <button style={{background:'none',border:'none',color:AZUL,fontWeight:700,fontSize:13,padding:'6px 0'}} onClick={()=>setToast('Recuperação segura: solicite à EXTRABOM pelo WhatsApp para redefinir sua senha.')}>Esqueci minha senha</button>
-     <button style={{...s.btn(AZUL),marginTop:8}} onClick={()=>{const r=db.revendedores.find(x=>x.login===loginUser.trim().toLowerCase()&&x.ativo); if(r){const ss={role:'revendedor',revendedorId:r.id}; setSession(ss); localStorage.setItem('extrabom_session',JSON.stringify(ss))} else setToast('Usuário não encontrado. Use um acesso de demonstração abaixo ou solicite à empresa.')}}>ENTRAR</button>
+     <button style={{...s.btn(AZUL),marginTop:8}} onClick={async()=>{ if(supabase){ if(!loginUser||!loginPass){setToast('Preencha e-mail e senha.');return} const {data,error}=await supabase.auth.signInWithPassword({email:loginUser.trim(),password:loginPass}); if(error||!data.user){setToast('E-mail ou senha incorretos. Confira e tente de novo.');return} const m:any=data.user.user_metadata||{}; if(m.role==='admin') setSession({role:'admin'}); else if(m.role==='revendedor') setSession({role:'revendedor',revendedorId:m.revendedorId||'r1'}); else setToast('Usuário sem permissão definida. Avise a EXTRABOM.'); } else { const r=db.revendedores.find(x=>x.login===loginUser.trim().toLowerCase()&&x.ativo); if(r){const ss={role:'revendedor',revendedorId:r.id}; setSession(ss); localStorage.setItem('extrabom_session',JSON.stringify(ss))} else setToast('Usuário não encontrado. Use um acesso de demonstração abaixo ou solicite à empresa.') } }}>ENTRAR</button>
      <div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:12,padding:12,fontSize:13,marginTop:14}}>🔐 <b>Novos acessos</b> são criados pela EXTRABOM e enviados pelo WhatsApp. Não há cadastro livre — fale com a empresa para solicitar o seu.</div>
-     <div style={{marginTop:16,borderTop:'1px dashed #D6E2F2',paddingTop:14}}><div style={{fontSize:12,fontWeight:800,color:'#64748B',letterSpacing:1,textAlign:'center'}}>ACESSO DEMONSTRAÇÃO — DADOS FICTÍCIOS</div>
+     {!supabaseConectado && <div style={{marginTop:16,borderTop:'1px dashed #D6E2F2',paddingTop:14}}><div style={{fontSize:12,fontWeight:800,color:'#64748B',letterSpacing:1,textAlign:'center'}}>ACESSO DEMONSTRAÇÃO — DADOS FICTÍCIOS</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:10}}><button style={{...s.btn(ROSA),padding:12}} onClick={()=>{const ss={role:'revendedor',revendedorId:'r1'}; setSession(ss); localStorage.setItem('extrabom_session',JSON.stringify(ss))}}>🛒 Revendedor Demo</button><button style={{...s.btn(MARINHO),padding:12}} onClick={()=>{const ss={role:'admin'}; setSession(ss); localStorage.setItem('extrabom_session',JSON.stringify(ss))}}>⚙️ Painel Admin</button></div>
-      <p style={{fontSize:12,color:'#64748B',textAlign:'center'}}>Revendedores demo: <b>carlos</b> (mín. R$150) · <b>maria</b> (R$200) · <b>joao</b> (R$300)</p></div>
+      <p style={{fontSize:12,color:'#64748B',textAlign:'center'}}>Revendedores demo: <b>carlos</b> (mín. R$150) · <b>maria</b> (R$200) · <b>joao</b> (R$300)</p></div>}
     </div><p style={{textAlign:'center',fontSize:12,color:'#64748B',marginTop:14}}>EXTRABOM SORVETES • PWA instalável — adicione à tela inicial do celular</p>
    </div>{toast&&<Toast t={toast}/>}</div>
  }
@@ -97,7 +100,7 @@ export default function System(){
     <div style={{background:'#fff',borderRadius:14,padding:8}}><img src="/logo.png" style={{width:'100%',height:64,objectFit:'contain'}}/></div>
     <div style={{fontWeight:900,margin:'14px 2px',fontSize:15}}>PAINEL EXTRABOM</div>
     {menu.map(m=><button key={m[0]} onClick={()=>setAdminView(m[0])} style={{display:'flex',gap:10,width:'100%',textAlign:'left',background:adminView===m[0]?'rgba(255,255,255,.18)':'transparent',color:'#fff',border:'none',borderRadius:12,padding:'11px 12px',fontWeight:700,marginBottom:4}}>{m[1]} {m[2]} {m[0]==='pedidos'&&pendentes>0&&<span style={{marginLeft:'auto',background:ROSA,borderRadius:99,padding:'1px 8px',fontSize:12}}>{pendentes}</span>}</button>)}
-    <button style={{...s.btn('#fff',MARINHO),marginTop:16,padding:11}} onClick={()=>{setSession(null);localStorage.removeItem('extrabom_session')}}>Sair</button>
+    <button style={{...s.btn('#fff',MARINHO),marginTop:16,padding:11}} onClick={sairSessao}>Sair</button>
     <button style={{background:'none',border:'1px solid rgba(255,255,255,.4)',color:'#fff',borderRadius:12,padding:10,width:'100%',marginTop:8,fontWeight:700}} onClick={()=>{if(confirm('Restaurar dados de demonstração?')){setDb(seedDB());setToast('Dados demo restaurados.')}}}>↺ Restaurar demo</button>
    </aside>
    <main style={{flex:1,padding:22,maxWidth:1200,width:'100%'}}>
@@ -128,7 +131,7 @@ export default function System(){
  }
 
  // ---------- REVENDEDOR ----------
- if(!rev) return <div style={{padding:30}}>Conta não encontrada. <button onClick={()=>setSession(null)}>Voltar</button></div>
+ if(!rev) return <div style={{padding:30}}>Conta não encontrada. <button onClick={sairSessao}>Voltar</button></div>
  const categorias=['Todos',...Array.from(new Set(db.produtos.map(p=>p.categoria)))]
  const produtosFiltrados=db.produtos.filter(p=>p.ativo&&(cat==='Todos'||p.categoria===cat)&&(p.nome.toLowerCase().includes(search.toLowerCase())))
  const notifs=db.notificacoes.filter(n=>n.revendedorId===rev.id)
@@ -137,7 +140,7 @@ export default function System(){
  const nav:[string,string,string][]=[['inicio','🏠','Início'],['catalogo','🍦','Catálogo'],['carrinho','🛒','Carrinho'],['pedidos','📦','Pedidos'],['perfil','👤','Perfil']]
 
  return <div style={{minHeight:'100dvh',background:'#EEF3FB',paddingBottom:86}}>
-  <header style={{background:MARINHO,color:'#fff',padding:'14px 16px',position:'sticky',top:0,zIndex:20,boxShadow:'0 4px 18px rgba(10,47,107,.25)'}}><div style={{maxWidth:980,margin:'0 auto',display:'flex',alignItems:'center',gap:12}}><div style={{background:'#fff',borderRadius:12,padding:4}}><img src="/logo.png" style={{height:42,width:110,objectFit:'contain',display:'block'}}/></div><div style={{flex:1}}><div style={{fontWeight:900,fontSize:15}}>EXTRABOM SORVETES</div><div style={{fontSize:12,opacity:.85}}>Olá, {rev.nome.split(' ')[0]} 👋 • {rev.negocio}</div></div><button onClick={()=>setView('pedidos')} style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',borderRadius:12,padding:'9px 11px',position:'relative'}}>🔔{notifs.filter(n=>!n.lida).length>0&&<span style={{position:'absolute',top:-5,right:-5,background:ROSA,color:'#fff',borderRadius:99,fontSize:10,padding:'2px 6px',fontWeight:900}}>{notifs.filter(n=>!n.lida).length}</span>}</button><button onClick={()=>{setSession(null);localStorage.removeItem('extrabom_session')}} style={{background:'#fff',color:MARINHO,border:'none',borderRadius:12,padding:'9px 12px',fontWeight:800}}>Sair</button></div></header>
+  <header style={{background:MARINHO,color:'#fff',padding:'14px 16px',position:'sticky',top:0,zIndex:20,boxShadow:'0 4px 18px rgba(10,47,107,.25)'}}><div style={{maxWidth:980,margin:'0 auto',display:'flex',alignItems:'center',gap:12}}><div style={{background:'#fff',borderRadius:12,padding:4}}><img src="/logo.png" style={{height:42,width:110,objectFit:'contain',display:'block'}}/></div><div style={{flex:1}}><div style={{fontWeight:900,fontSize:15}}>EXTRABOM SORVETES</div><div style={{fontSize:12,opacity:.85}}>Olá, {rev.nome.split(' ')[0]} 👋 • {rev.negocio}</div></div><button onClick={()=>setView('pedidos')} style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',borderRadius:12,padding:'9px 11px',position:'relative'}}>🔔{notifs.filter(n=>!n.lida).length>0&&<span style={{position:'absolute',top:-5,right:-5,background:ROSA,color:'#fff',borderRadius:99,fontSize:10,padding:'2px 6px',fontWeight:900}}>{notifs.filter(n=>!n.lida).length}</span>}</button><button onClick={sairSessao} style={{background:'#fff',color:MARINHO,border:'none',borderRadius:12,padding:'9px 12px',fontWeight:800}}>Sair</button></div></header>
   <main style={{maxWidth:980,margin:'0 auto',padding:16}}>
    <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:12,padding:'9px 12px',fontSize:12,marginBottom:14}}>🧪 <b>Demonstração:</b> preços e dados fictícios para validação. Os valores reais serão cadastrados pela EXTRABOM no painel.</div>
 
