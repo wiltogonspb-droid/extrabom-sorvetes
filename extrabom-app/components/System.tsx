@@ -1,6 +1,7 @@
 'use client'
 import React,{useEffect,useMemo,useState} from 'react'
 import {DB,Pedido,Produto,Revendedor,seedDB,precoPara,money,disponivel,STATUS_LABEL,StatusPedido} from '../lib/data'
+import {supabase} from '../lib/supabase'
 
 const AZUL='#0B4DA2', MARINHO='#0A2F6B', ROSA='#E91E8C', VERDE='#58B531', CLARO='#EAF2FF'
 const s:any={
@@ -28,8 +29,15 @@ export default function System(){
  const [novoRev,setNovoRev]=useState({nome:'',negocio:'',telefone:'',minimo:'150'})
  const [filtroStatus,setFiltroStatus]=useState('todos')
 
+ const [remoteOk,setRemoteOk]=useState(false)
  useEffect(()=>{try{const d=localStorage.getItem('extrabom_db_v3'); if(d) setDb(JSON.parse(d)); const ss=localStorage.getItem('extrabom_session'); if(ss) setSession(JSON.parse(ss))}catch(e){} setLoaded(true)},[])
  useEffect(()=>{if(loaded) localStorage.setItem('extrabom_db_v3',JSON.stringify(db))},[db,loaded])
+ // SUPABASE: carrega o estado compartilhado (banco da EXTRABOM) ao abrir
+ useEffect(()=>{ if(!supabase){setRemoteOk(true);return} let vivo=true; (async()=>{ try{ const {data}=await supabase.from('app_dados').select('dados').eq('id',1).maybeSingle(); if(vivo&&data&&data.dados) setDb(data.dados) }catch(e){} if(vivo) setRemoteOk(true) })(); return ()=>{vivo=false} },[])
+ // SUPABASE: salva cada alteracao no banco compartilhado (com pequena espera)
+ useEffect(()=>{ if(!supabase||!loaded||!remoteOk) return; const t=setTimeout(()=>{ supabase.from('app_dados').upsert({id:1,dados:db,atualizado_em:new Date().toISOString()}).then(()=>{}) },700); return ()=>clearTimeout(t) },[db,loaded,remoteOk])
+ // SUPABASE: atualiza a tela quando outro aparelho muda algo (a cada 12s)
+ useEffect(()=>{ if(!supabase||!remoteOk) return; const iv=setInterval(async()=>{ try{ const {data}=await supabase.from('app_dados').select('dados').eq('id',1).maybeSingle(); if(data&&data.dados) setDb((prev:DB)=> JSON.stringify(prev)===JSON.stringify(data.dados)? prev : data.dados) }catch(e){} },12000); return ()=>clearInterval(iv) },[remoteOk])
  useEffect(()=>{if(!toast) return; const t=setTimeout(()=>setToast(''),3200); return ()=>clearTimeout(t)},[toast])
  const rev:Revendedor|undefined = session?.role==='revendedor' ? db.revendedores.find(r=>r.id===session.revendedorId) : undefined
  const meusPedidos = useMemo(()=> rev? db.pedidos.filter(p=>p.revendedorId===rev.id):[],[db,rev])
