@@ -2,7 +2,21 @@
   "name": "extrabom-sorvetes",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "dev": "next dev -H 0.0.0.0 -p 3000", "build": "next build", "start": "next start -H 0.0.0.0 -p 3000" },
-  "dependencies": { "next": "14.2.5", "react": "18.3.1", "react-dom": "18.3.1", "@supabase/supabase-js": "^2.45.0" },
-  "devDependencies": { "typescript": "^5", "@types/react": "^18", "@types/node": "^20" }
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "react-qr-code": "^2.0.15"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/react": "^18",
+    "@types/node": "^20"
+  }
 }

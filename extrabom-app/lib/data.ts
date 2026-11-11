@@ -7,7 +7,7 @@
 
 export type StatusPedido = 'aguardando_aprovacao'|'aprovado'|'separacao_producao'|'aguardando_conferencia'|'pronto'|'saiu_entrega'|'entregue'|'retirado'|'recusado'|'cancelado'
 export type PagSituacao = 'pendente'|'aguardando_confirmacao'|'pago'|'parcialmente_pago'|'estornado'
-export type Produto = { id:string; nome:string; descricao:string; categoria:string; embalagem:string; emoji:string; cor:string; precoPadrao:number; ativo:boolean; disponibilidade:'disponivel'|'em_producao'|'indisponivel'; estoqueFisico:number; estoqueReservado:number }
+export type Produto = { id:string; nome:string; descricao:string; categoria:string; embalagem:string; emoji:string; cor:string; imagem?:string; precoPadrao:number; ativo:boolean; disponibilidade:'disponivel'|'em_producao'|'indisponivel'; estoqueFisico:number; estoqueReservado:number }
 export type Revendedor = { id:string; nome:string; negocio:string; telefone:string; doc:string; endereco:string; login:string; ativo:boolean; pedidoMinimo:number; pagamento:string[]; precos:Record<string,number> }
 export type ItemPedido = { produtoId:string; nome:string; embalagem:string; precoUnitario:number; quantidade:number }
 export type Pedido = { id:string; numero:string; revendedorId:string; itens:ItemPedido[]; total:number; recebimento:'entrega'|'retirada'; endereco:string; pagamento:'pix'|'na_entrega'|'na_retirada'; pagSituacao:PagSituacao; status:StatusPedido; motivo?:string; obs?:string; criadoEm:string; historico:{status:string;em:string;por:string}[] }
@@ -40,7 +40,8 @@ export function seedDB():DB{
     {id:'r2',nome:'Maria Santos',negocio:'Lanchonete da Maria Santos (DEMO)',telefone:'(00) 90000-0002',doc:'CNPJ ••• (demo)',endereco:'Endereço demonstrativo — cadastrar o real no Admin',login:'maria',ativo:true,pedidoMinimo:200,pagamento:['pix','na_retirada'],precos:{}},
     {id:'r3',nome:'João Pedro',negocio:'Distribuidora do João Pedro (DEMO)',telefone:'(00) 90000-0003',doc:'CNPJ ••• (demo)',endereco:'Endereço demonstrativo — cadastrar o real no Admin',login:'joao',ativo:true,pedidoMinimo:300,pagamento:['pix','na_entrega'],precos:{}},
   ]
-  return {versao:3,produtos,revendedores,pedidos:[],notificacoes:[{id:'n1',revendedorId:'r1',texto:'Bem-vindo à Área do Revendedor EXTRABOM! Confira o catálogo e faça seu pedido.',em:new Date().toISOString(),lida:false}],promocoes:[{id:'pr1',titulo:'Tabela de preços atualizada',texto:'Confira os valores vigentes no catálogo. Picolé no atacado tem preço especial por quantidade!'}],movimentos:[]}
+  produtos.forEach(x=>{ x.imagem = x.categoria.startsWith('Sorvetes') ? '/img/pote-redondo.jpg' : x.categoria==='Produtos' ? '/img/produtos.jpg' : x.categoria==='Picolés de Leite' ? '/img/picole-leite.jpg' : '/img/picole-agua.jpg' })
+  return {versao:4,produtos,revendedores,pedidos:[],notificacoes:[{id:'n1',revendedorId:'r1',texto:'Bem-vindo à Área do Revendedor EXTRABOM! Confira o catálogo e faça seu pedido.',em:new Date().toISOString(),lida:false}],promocoes:[{id:'pr1',titulo:'Tabela de preços atualizada',texto:'Confira os valores vigentes no catálogo. Picolé no atacado tem preço especial por quantidade!'}],movimentos:[]}
 }
 export function precoPicole(totalPicoles:number){ if(totalPicoles>2000) return 0.60; if(totalPicoles>=600) return 0.65; return 0.70 }
 export const precoPara=(p:Produto,r:Revendedor)=> r.precos[p.id] ?? p.precoPadrao
