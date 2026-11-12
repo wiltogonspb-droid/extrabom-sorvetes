@@ -34,6 +34,7 @@ export default function System(){
  const [filtroStatus,setFiltroStatus]=useState('todos')
  const [lembrarMe,setLembrarMe]=useState(true)
  const [novoAcesso,setNovoAcesso]=useState({email:'',senha:'',role:'revendedor',revendedorId:'r1'})
+ const [menuAdminAberto,setMenuAdminAberto]=useState(false)
  const [perfilForm,setPerfilForm]=useState<any>(null)
 
  const [remoteOk,setRemoteOk]=useState(false)
@@ -109,10 +110,10 @@ export default function System(){
   const menu:[string,string,string][]=[['dashboard','📊','Dashboard'],['pedidos','🧾','Central de Pedidos'],['revendedores','👥','Revendedores'],['produtos','🍦','Produtos & Preços'],['estoque','📦','Estoque'],['producao','🏭','Produção'],['expedicao','🚚','Expedição'],['financeiro','💰','Financeiro'],['relatorios','📈','Relatórios'],['usuarios','🔐','Usuários & Permissões']]
   const pedidosFiltrados = filtroStatus==='todos'?db.pedidos:db.pedidos.filter(p=>p.status===filtroStatus)
   return <div className="adminWrap" style={{display:'flex',minHeight:'100dvh'}}>
-   <aside className="adminSide" style={{width:248,background:MARINHO,color:'#fff',padding:18,position:'sticky',top:0,height:'100dvh',flexShrink:0,overflowY:'auto'}}>
+   <div className="adminMobileTop"><button onClick={()=>setMenuAdminAberto(true)} style={{background:'rgba(255,255,255,.16)',border:'none',color:'#fff',borderRadius:10,padding:'9px 13px',fontWeight:900,fontSize:17}}>☰</button><div style={{background:'#fff',borderRadius:10,padding:3}}><img src="/logo.png" style={{height:34,width:92,objectFit:'contain',display:'block'}}/></div><b style={{fontSize:14}}>Painel EXTRABOM</b></div>{menuAdminAberto&&<div className="adminOverlay" onClick={()=>setMenuAdminAberto(false)}></div>}<aside className={"adminSide"+(menuAdminAberto?" open":"")} style={{width:248,background:MARINHO,color:'#fff',padding:18,position:'sticky',top:0,height:'100dvh',flexShrink:0,overflowY:'auto'}}>
     <div style={{background:'#fff',borderRadius:14,padding:8}}><img src="/logo.png" style={{width:'100%',height:64,objectFit:'contain'}}/></div>
     <div style={{fontWeight:900,margin:'14px 2px',fontSize:15}}>PAINEL EXTRABOM</div>
-    {menu.map(m=><button key={m[0]} onClick={()=>setAdminView(m[0])} style={{display:'flex',gap:10,width:'100%',textAlign:'left',background:adminView===m[0]?'rgba(255,255,255,.18)':'transparent',color:'#fff',border:'none',borderRadius:12,padding:'11px 12px',fontWeight:700,marginBottom:4}}>{m[1]} {m[2]} {m[0]==='pedidos'&&pendentes>0&&<span style={{marginLeft:'auto',background:ROSA,borderRadius:99,padding:'1px 8px',fontSize:12}}>{pendentes}</span>}</button>)}
+    {menu.map(m=><button key={m[0]} onClick={()=>{setAdminView(m[0]);setMenuAdminAberto(false)}} style={{display:'flex',gap:10,width:'100%',textAlign:'left',background:adminView===m[0]?'rgba(255,255,255,.18)':'transparent',color:'#fff',border:'none',borderRadius:12,padding:'11px 12px',fontWeight:700,marginBottom:4}}>{m[1]} {m[2]} {m[0]==='pedidos'&&pendentes>0&&<span style={{marginLeft:'auto',background:ROSA,borderRadius:99,padding:'1px 8px',fontSize:12}}>{pendentes}</span>}</button>)}
     <button style={{...s.btn('#fff',MARINHO),marginTop:16,padding:11}} onClick={sairSessao}>Sair</button>
    </aside>
    <main className="adminMain" style={{flex:1,padding:22,maxWidth:1200,width:'100%'}}>
@@ -140,12 +141,14 @@ export default function System(){
     {adminView==='relatorios'&&<><h2 style={{color:MARINHO}}>📈 Relatórios</h2><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:12}}><div style={s.card}><b>Mais vendidos</b>{Object.entries(db.pedidos.flatMap(p=>p.itens).reduce((a:any,i)=>{a[i.nome]=(a[i.nome]||0)+i.quantidade;return a},{})).sort((a:any,b:any)=>b[1]-a[1]).slice(0,6).map((x:any)=><div key={x[0]} style={{display:'flex',justifyContent:'space-between',fontSize:13,marginTop:6}}><span>{x[0]}</span><b>{x[1]} un</b></div>)}</div><div style={s.card}><b>Por revendedor</b>{db.revendedores.map(r=>{const v=db.pedidos.filter(p=>p.revendedorId===r.id);return <div key={r.id} style={{display:'flex',justifyContent:'space-between',fontSize:13,marginTop:6}}><span>{r.nome}</span><b>{money(v.reduce((a,p)=>a+p.total,0))}</b></div>})}</div><div style={s.card}><b>Faturamento & cancelamentos</b><div style={{fontSize:14,marginTop:8}}>Faturamento válido: <b>{money(db.pedidos.filter(p=>!['recusado','cancelado'].includes(p.status)).reduce((a,p)=>a+p.total,0))}</b><br/>Recebido (pago): <b>{money(db.pedidos.filter(p=>p.pagSituacao==='pago').reduce((a,p)=>a+p.total,0))}</b><br/>Cancelados/recusados: <b>{db.pedidos.filter(p=>['recusado','cancelado'].includes(p.status)).length}</b></div></div></div></>}
     {adminView==='usuarios'&&<><h2 style={{color:MARINHO}}>🔐 Usuários & Permissões</h2><div style={{...s.card,marginBottom:14}}><b>➕ Criar novo acesso (sem sair do app)</b><div style={{fontSize:13,color:'#64748B',marginTop:4}}>Crie o login aqui e envie link + e-mail + senha inicial pelo WhatsApp da pessoa.</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:8,marginTop:12}}><input style={s.input} placeholder='E-mail da pessoa' value={novoAcesso.email} onChange={e=>setNovoAcesso({...novoAcesso,email:e.target.value})}/><input style={s.input} placeholder='Senha inicial (6+ caracteres)' value={novoAcesso.senha} onChange={e=>setNovoAcesso({...novoAcesso,senha:e.target.value})}/><select style={s.input} value={novoAcesso.role} onChange={e=>setNovoAcesso({...novoAcesso,role:e.target.value})}><option value='revendedor'>Revendedor</option><option value='admin'>Administrador (cuidado!)</option></select>{novoAcesso.role==='revendedor'&&<select style={s.input} value={novoAcesso.revendedorId} onChange={e=>setNovoAcesso({...novoAcesso,revendedorId:e.target.value})}>{db.revendedores.map(r=><option key={r.id} value={r.id}>{r.nome}</option>)}</select>}</div><button style={{...s.btn(VERDE),marginTop:6}} onClick={criarAcesso}>Criar acesso</button></div>{[['Administrador','Acesso total'],['Comercial','Revendedores, preços e pedidos'],['Produção','Produção e estoque'],['Expedição','Entregas e retiradas'],['Financeiro','Pagamentos e relatórios financeiros']].map(u=><div key={u[0]} style={{...s.card,marginBottom:10,display:'flex',justifyContent:'space-between'}}><b>{u[0]}</b><span style={{fontSize:13,color:'#475569'}}>{u[1]}</span></div>)}<p style={{fontSize:13,color:'#64748B'}}>Em produção, cada funcionário terá login próprio no Supabase Auth com RLS por perfil. Senhas com hash, auditoria de alterações e LGPD.</p></>}
    </main>{toast&&<Toast t={toast}/>}<style>{`
+.adminMobileTop{display:none}
+.adminOverlay{position:fixed;inset:0;background:rgba(6,25,55,.55);z-index:45}
 @media(max-width:820px){
  .adminWrap{flex-direction:column!important}
- .adminSide{width:100%!important;height:auto!important;position:sticky!important;top:0;z-index:40;padding:10px!important;overflow-x:auto!important;overflow-y:hidden!important;white-space:nowrap}
- .adminSide img{height:36px!important}
- .adminSide>div:nth-child(2){display:inline-block;vertical-align:middle;margin:0 10px!important;font-size:13px!important}
- .adminSide button{display:inline-flex!important;width:auto!important;margin:4px 4px 4px 0!important;padding:9px 11px!important;font-size:13px}
+ .adminMobileTop{display:flex;align-items:center;gap:10px;background:#0A2F6B;color:#fff;padding:10px 12px;position:sticky;top:0;z-index:44}
+ .adminSide{position:fixed!important;left:0;top:0;width:266px!important;height:100dvh!important;z-index:50;transform:translateX(-110%);transition:transform .28s ease;box-shadow:8px 0 30px rgba(0,0,0,.3);overflow-y:auto!important;white-space:normal!important;padding:16px!important}
+ .adminSide.open{transform:translateX(0)}
+ .adminSide button{display:flex!important;width:100%!important;margin:0 0 4px!important;padding:11px 12px!important;font-size:14px}
  .adminMain{padding:12px!important}
 }
 `}</style></div>
