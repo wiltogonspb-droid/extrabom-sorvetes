@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { enviarPush } from '../../../lib/pushServer'
 
 // Autocadastro do revendedor pelo link: ele cria a conta, mas nasce BLOQUEADO
 // (em analise). A EXTRABOM aprova no Painel, define minimo/precos e ativa.
@@ -24,6 +25,8 @@ export async function POST(req: NextRequest) {
   const dados: any = linha?.dados || {}
   dados.revendedores = Array.isArray(dados.revendedores) ? dados.revendedores : []
   dados.revendedores.push({ id: revendedorId, nome, negocio, telefone, doc, endereco, login: email, ativo: false, pedidoMinimo: 0, pagamento: ['pix', 'na_entrega', 'na_retirada'], precos: {} })
+  // avisa a equipe no celular: chegou cadastro esperando aprovacao (se o push estiver ativo)
+  try { await enviarPush(dados, { roles: ['admin'], tipo: 'novo_cadastro', titulo: '📝 Novo cadastro em análise', corpo: nome + ' (' + negocio + ') se cadastrou pelo link e aguarda liberação.' }) } catch (e) {}
   const { error: errSalvar } = await admin.from('app_dados').upsert({ id: 1, dados, atualizado_em: new Date().toISOString() })
   if (errSalvar) return NextResponse.json({ erro: 'Conta criada, mas falhou ao salvar o cadastro. Avise a EXTRABOM.' }, { status: 500 })
   return NextResponse.json({ ok: true, revendedorId, userId: data.user?.id })

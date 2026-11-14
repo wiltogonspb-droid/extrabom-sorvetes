@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/push/verificar-freezers", "schedule": "0 11 * * *" }
+  ]
+}

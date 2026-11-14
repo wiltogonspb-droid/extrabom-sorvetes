@@ -12,7 +12,9 @@ export type Revendedor = { id:string; nome:string; negocio:string; telefone:stri
 export type ItemPedido = { produtoId:string; nome:string; embalagem:string; precoUnitario:number; quantidade:number }
 export type Pedido = { id:string; numero:string; revendedorId:string; itens:ItemPedido[]; total:number; recebimento:'entrega'|'retirada'; endereco:string; pagamento:'pix'|'na_entrega'|'na_retirada'; pagSituacao:PagSituacao; status:StatusPedido; motivo?:string; obs?:string; criadoEm:string; historico:{status:string;em:string;por:string}[] }
 export type Notificacao = { id:string; revendedorId:string; texto:string; em:string; lida:boolean }
-export type DB = { versao?:number; produtos:Produto[]; revendedores:Revendedor[]; pedidos:Pedido[]; notificacoes:Notificacao[]; promocoes:{id:string;titulo:string;texto:string}[]; movimentos:{id:string;produto:string;tipo:string;qtd:number;em:string;motivo:string}[] }
+export type PushSub = { id:string; role:'admin'|'revendedor'; revendedorId?:string; email?:string; subscription:any; prefs:Record<string,boolean>; aparelho?:string; criadoEm:string }
+export const PUSH_CHAVE_PUBLICA='BCNBl2xS4oOPsWk7aFcuMrlfJdfThbYSD_5i6umk6iHb6bhHooM4uEYSEDvwNFxTSFy3_AciiA5MVmuabW34BvY'
+export type DB = { versao?:number; produtos:Produto[]; revendedores:Revendedor[]; pedidos:Pedido[]; notificacoes:Notificacao[]; promocoes:{id:string;titulo:string;texto:string}[]; movimentos:{id:string;produto:string;tipo:string;qtd:number;em:string;motivo:string}[]; pushSubs?:PushSub[]; pushAlertas?:Record<string,string> }
 
 export const STATUS_LABEL:Record<StatusPedido,string>={aguardando_aprovacao:'Aguardando aprovação',aprovado:'Aprovado',separacao_producao:'Em separação / produção',aguardando_conferencia:'Aguardando conferência',pronto:'Pronto',saiu_entrega:'Saiu para entrega',entregue:'Entregue',retirado:'Retirado',recusado:'Recusado',cancelado:'Cancelado'}
 export const TIMELINE:StatusPedido[]=['aguardando_aprovacao','aprovado','separacao_producao','aguardando_conferencia','pronto','saiu_entrega','entregue']
@@ -41,7 +43,7 @@ export function seedDB():DB{
     {id:'r3',nome:'João Pedro',negocio:'Distribuidora do João Pedro (DEMO)',telefone:'(00) 90000-0003',doc:'CNPJ ••• (demo)',endereco:'Endereço demonstrativo — cadastrar o real no Admin',login:'joao',ativo:true,pedidoMinimo:300,pagamento:['pix','na_entrega'],precos:{}},
   ]
   produtos.forEach(x=>{ x.imagem = x.categoria.startsWith('Sorvetes') ? '/img/pote-redondo.jpg' : x.categoria==='Produtos' ? '/img/produtos.jpg' : x.categoria==='Picolés de Leite' ? '/img/picole-leite.jpg' : '/img/picole-agua.jpg' })
-  return {versao:4,produtos,revendedores,pedidos:[],notificacoes:[{id:'n1',revendedorId:'r1',texto:'Bem-vindo à Área do Revendedor EXTRABOM! Confira o catálogo e faça seu pedido.',em:new Date().toISOString(),lida:false}],promocoes:[{id:'pr1',titulo:'Tabela de preços atualizada',texto:'Confira os valores vigentes no catálogo. Picolé no atacado tem preço especial por quantidade!'}],movimentos:[]}
+  return {versao:4,produtos,revendedores,pedidos:[],notificacoes:[{id:'n1',revendedorId:'r1',texto:'Bem-vindo à Área do Revendedor EXTRABOM! Confira o catálogo e faça seu pedido.',em:new Date().toISOString(),lida:false}],pushSubs:[],pushAlertas:{},promocoes:[{id:'pr1',titulo:'Tabela de preços atualizada',texto:'Confira os valores vigentes no catálogo. Picolé no atacado tem preço especial por quantidade!'}],movimentos:[]}
 }
 export function precoPicole(totalPicoles:number){ if(totalPicoles>2000) return 0.60; if(totalPicoles>=600) return 0.65; return 0.70 }
 export const precoPara=(p:Produto,r:Revendedor)=> r.precos[p.id] ?? p.precoPadrao
